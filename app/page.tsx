@@ -1391,16 +1391,23 @@ export default function Page() {
 
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setPatient((prev) => ({ ...prev, photo: reader.result }));
-      }
-    };
-    reader.readAsDataURL(file);
-  }
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    const result = reader.result;
+    if (typeof result !== "string") return;
+
+    setPatient((prev) => ({
+      ...prev,
+      photo: result,
+    }));
+  };
+
+  reader.readAsDataURL(file);
+}
 
   function addSubject() {
     const name = newSubjectName.trim();
