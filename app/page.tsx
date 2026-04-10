@@ -582,6 +582,92 @@ function SimpleLineChart({
   );
 }
 
+
+
+function downloadCsv(patient: Patient, logs: DailyLog[], vitals: VitalEntry[], selectedDate: string) {
+  const currentLog = getCurrentLog(logs, selectedDate);
+  const todayVitals = [...vitals]
+    .filter((v) => v.date === selectedDate)
+    .sort((a, b) => a.time.localeCompare(b.time));
+
+  const escapeCsv = (value: string | number | null | undefined) => {
+    const text = String(value ?? "");
+    if (text.includes(",") || text.includes('"') || text.includes("\n")) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+    return text;
+  };
+
+  const rows: (string | number)[][] = [];
+
+  rows.push(["患者情報"]);
+  rows.push(["項目", "値"]);
+  rows.push(["患者名", patient.name || ""]);
+  rows.push(["年齢", patient.age || ""]);
+  rows.push(["eGFR", patient.egfr || ""]);
+  rows.push(["透析", patient.dialysis || ""]);
+  rows.push(["高カリウム血症", patient.highPotassium || ""]);
+  rows.push(["目標カロリー", patient.targetKcal || ""]);
+  rows.push(["目標たんぱく質", patient.targetProtein || ""]);
+  rows.push(["目標ナトリウム", patient.targetSodium || ""]);
+  rows.push(["目標カリウム", patient.targetPotassium || ""]);
+  rows.push([]);
+
+  rows.push(["日別記録"]);
+  rows.push(["日付", "メモ", "総カロリー", "総たんぱく質", "総ナトリウム", "総カリウム"]);
+  rows.push([
+    selectedDate,
+    currentLog.memo || "",
+    currentLog.totalKcal || 0,
+    currentLog.totalProtein || 0,
+    currentLog.totalSodium || 0,
+    currentLog.totalPotassium || 0,
+  ]);
+  rows.push([]);
+
+  rows.push(["体重・血圧記録"]);
+  rows.push(["日付", "時刻", "体重", "収縮期", "拡張期"]);
+  if (todayVitals.length === 0) {
+    rows.push([selectedDate, "", "", "", ""]);
+  } else {
+    todayVitals.forEach((v) => {
+      rows.push([v.date, v.time, v.weight || "", v.systolic || "", v.diastolic || ""]);
+    });
+  }
+  rows.push([]);
+
+  rows.push(["食事記録"]);
+  rows.push(["食事区分", "科目", "食品名", "量", "kcal", "たんぱく質", "ナトリウム", "カリウム"]);
+  if (currentLog.items.length === 0) {
+    rows.push(["", "", "", "", "", "", "", ""]);
+  } else {
+    currentLog.items.forEach((item) => {
+      rows.push([
+        item.mealType,
+        item.subject,
+        item.foodName,
+        item.amountLabel,
+        item.kcal,
+        item.protein,
+        item.sodium,
+        item.potassium,
+      ]);
+    });
+  }
+
+  const csv = rows.map((row) => row.map(escapeCsv).join(",")).join("\r\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `ckd-record-${selectedDate}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export default function Page() {
   const supabase = createClient();
   const [page, setPage] = useState<"dashboard" | "patient" | "meal">("dashboard");
@@ -1391,23 +1477,23 @@ export default function Page() {
 
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-  const file = e.target.files?.[0];
-  if (!file) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const reader = new FileReader();
+    const reader = new FileReader();
 
-  reader.onload = () => {
-    const result = reader.result;
-    if (typeof result !== "string") return;
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") return;
 
-    setPatient((prev) => ({
-      ...prev,
-      photo: result,
-    }));
-  };
+      setPatient((prev) => ({
+        ...prev,
+        photo: result,
+      }));
+    };
 
-  reader.readAsDataURL(file);
-}
+    reader.readAsDataURL(file);
+  }
 
   function addSubject() {
     const name = newSubjectName.trim();
