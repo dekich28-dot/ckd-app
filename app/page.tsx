@@ -1715,7 +1715,7 @@ export default function Page() {
           <div className="hero-row">
             <div>
               <div className="hero-eyebrow">CKD 栄養管理アプリ 試作版</div>
-              <h1 className="hero-title">腎臓ごはん記録</h1>
+              <h1 className="hero-title">腎臓ノート</h1>
               <div className="hero-text">
                 科目の自作追加、スマホ対応、直近7日間グラフ、1週間まとめPDF印刷まで入れた版です。
               </div>
