@@ -232,6 +232,32 @@ function getLatestVitalPerDate(vitals: VitalEntry[], dates: string[]) {
   });
 }
 
+function formatMonthDayTime(date: string, time: string) {
+  const d = date.slice(5);
+  const t = (time || "").slice(0, 5);
+  return t ? `${d} ${t}` : d;
+}
+
+function getRecentVitalSeries(vitals: VitalEntry[], endDate: string) {
+  const dates = last7Dates(endDate);
+  const startDate = dates[0];
+
+  return [...vitals]
+    .filter((v) => v.date >= startDate && v.date <= endDate)
+    .sort((a, b) => {
+      const av = `${a.date} ${a.time}`;
+      const bv = `${b.date} ${b.time}`;
+      return av.localeCompare(bv);
+    })
+    .map((v) => ({
+      date: v.date,
+      label: formatMonthDayTime(v.date, v.time),
+      weight: toNumber(v.weight),
+      systolic: toNumber(v.systolic),
+      diastolic: toNumber(v.diastolic),
+    }));
+}
+
 function get7DayLogs(logs: DailyLog[], endDate: string) {
   const dates = last7Dates(endDate);
   return dates.map((date) => getCurrentLog(logs, date));
@@ -844,8 +870,8 @@ export default function Page() {
     };
   }, [packageServings, packageKcal, packageProtein, packageSaltEq, packagePotassium, packageAmount]);
 
-  const weekDates = useMemo(() => last7Dates(selectedDate), [selectedDate]);
-  const weekVitalSeries = useMemo(() => getLatestVitalPerDate(vitals, weekDates), [vitals, weekDates]);
+  const weekVitalSeries = useMemo(() => getRecentVitalSeries(vitals, selectedDate), [vitals, selectedDate]);
+  
   const todayVitals = useMemo(() => {
     return [...vitals]
       .filter((v) => v.date === selectedDate)
@@ -1138,11 +1164,12 @@ export default function Page() {
       return;
     }
 
-    if (!todayVitals.length) {
-      setVitalCloudMessage("この日の体重・血圧記録は0件として保存しました。");
-      return;
-    }
-
+   if (!todayVitals.length) {
+  await loadVitalsFromSupabase();
+  setVitalCloudMessage("この日の体重・血圧記録は0件として保存しました。最新データを再読込しました。");
+  return;
+}
+ 
     const payload = todayVitals.map((v) => ({
       user_id: user.id,
       entry_date: selectedDate,
@@ -1157,12 +1184,15 @@ export default function Page() {
       .insert(payload);
 
     if (insertError) {
-      setVitalCloudMessage("Supabase保存エラー: " + insertError.message);
-      return;
-    }
+  setVitalCloudMessage("Supabase保存エラー: " + insertError.message);
+  return;
+}
 
-    setVitalCloudMessage("Supabaseの体重・血圧記録を更新しました。");
-  }
+await loadVitalsFromSupabase();
+setVitalCloudMessage("Supabaseの体重・血圧記録を更新しました。最新データを再読込しました。");
+}    
+    
+    
 
   async function loadMealItemsFromSupabase() {
     setMealCloudMessage("読み込み中...");
