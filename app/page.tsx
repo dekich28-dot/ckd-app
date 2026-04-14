@@ -874,7 +874,7 @@ export default function Page() {
 
     if (!user) {
       setAuthEmail("");
-      setPatientCloudMessage("未ログインです。/auth-test でログインしてください。");
+      setPatientCloudMessage("未ログインです。/login からログインしてください。");
       return;
     }
 
@@ -919,7 +919,7 @@ export default function Page() {
 
     if (!user) {
       setAuthEmail("");
-      setPatientCloudMessage("未ログインです。/auth-test でログインしてください。");
+      setPatientCloudMessage("未ログインです。/login からログインしてください。");
       return;
     }
 
@@ -977,7 +977,7 @@ export default function Page() {
 
     if (!user) {
       setAuthEmail("");
-      setDailyLogCloudMessage("未ログインです。/auth-test でログインしてください。");
+      setDailyLogCloudMessage("未ログインです。/login からログインしてください。");
       return;
     }
 
@@ -1026,7 +1026,7 @@ export default function Page() {
 
     if (!user) {
       setAuthEmail("");
-      setDailyLogCloudMessage("未ログインです。/auth-test でログインしてください。");
+      setDailyLogCloudMessage("未ログインです。/login からログインしてください。");
       return;
     }
 
@@ -1076,7 +1076,7 @@ export default function Page() {
 
     if (!user) {
       setAuthEmail("");
-      setVitalCloudMessage("未ログインです。/auth-test でログインしてください。");
+      setVitalCloudMessage("未ログインです。/login からログインしてください。");
       return;
     }
 
@@ -1121,7 +1121,7 @@ export default function Page() {
 
     if (!user) {
       setAuthEmail("");
-      setVitalCloudMessage("未ログインです。/auth-test でログインしてください。");
+      setVitalCloudMessage("未ログインです。/login からログインしてください。");
       return;
     }
 
@@ -1170,7 +1170,7 @@ export default function Page() {
 
     if (!user) {
       setAuthEmail("");
-      setMealCloudMessage("未ログインです。/auth-test でログインしてください。");
+      setMealCloudMessage("未ログインです。/login からログインしてください。");
       return;
     }
 
@@ -1267,7 +1267,7 @@ export default function Page() {
 
     if (!user) {
       setAuthEmail("");
-      setMealCloudMessage("未ログインです。/auth-test でログインしてください。");
+      setMealCloudMessage("未ログインです。/login からログインしてください。");
       return;
     }
 
@@ -1343,7 +1343,7 @@ export default function Page() {
 
     if (!user) {
       setAuthEmail("");
-      setSubjectFoodCloudMessage("未ログインです。/auth-test でログインしてください。");
+      setSubjectFoodCloudMessage("未ログインです。/login からログインしてください。");
       return;
     }
 
@@ -1403,7 +1403,7 @@ export default function Page() {
 
     if (!user) {
       setAuthEmail("");
-      setSubjectFoodCloudMessage("未ログインです。/auth-test でログインしてください。");
+      setSubjectFoodCloudMessage("未ログインです。/login からログインしてください。");
       return;
     }
 
