@@ -477,7 +477,7 @@ function ActionButton({
   color?: string;
 }) {
   return (
-    <button onClick={onClick} className="action-btn" style={{ background: color }}>
+    <button type="button" onClick={onClick} className="action-btn" style={{ background: color }}>
       {label}
     </button>
   );
