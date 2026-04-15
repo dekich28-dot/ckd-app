@@ -191,9 +191,9 @@ function buildSummaryMessages(
 
   const messages: string[] = [];
 
-  if (sodiumStatus.tone === "good") messages.push("塩分は目標内です。");
-  if (sodiumStatus.tone === "warn") messages.push("塩分は上限に近いです。");
-  if (sodiumStatus.tone === "danger") messages.push("塩分は目標を超えています。");
+if (sodiumStatus.tone === "good") messages.push("ナトリウムは目標内です。");
+if (sodiumStatus.tone === "warn") messages.push("ナトリウムは上限に近いです。");
+if (sodiumStatus.tone === "danger") messages.push("ナトリウムは目標を超えています。");
 
   if (kcalStatus.tone !== "good" && proteinStatus.tone !== "good") {
     messages.push("ただし、エネルギーとたんぱく質が少なめです。");
