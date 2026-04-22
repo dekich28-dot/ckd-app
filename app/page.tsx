@@ -1164,7 +1164,8 @@ export default function Page() {
     }
 
     if (!todayVitals.length) {
-      setVitalCloudMessage("この日の体重・血圧記録は0件として保存しました。");
+      await loadVitalsFromSupabase();
+      setVitalCloudMessage("この日の体重・血圧記録は0件として保存しました。最新データを再読込しました。");
       return;
     }
 
