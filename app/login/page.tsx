@@ -1,10 +1,9 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
-  const supabase = useMemo(() => createClient(), []);
   const [email, setEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [message, setMessage] = useState("");
@@ -22,6 +21,7 @@ export default function LoginPage() {
     }
 
     setIsSending(true);
+    const supabase = createClient();
 
     const { error } = await supabase.auth.signInWithOtp({
       email: trimmedEmail,
@@ -42,20 +42,9 @@ export default function LoginPage() {
 
   return (
     <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: "24px" }}>
-      <div
-        style={{
-          maxWidth: "560px",
-          width: "100%",
-          border: "1px solid #e2e8f0",
-          borderRadius: "12px",
-          padding: "20px",
-          background: "#fff",
-        }}
-      >
-        <h1 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>ログイン</h1>
-        <p style={{ color: "#475569", marginBottom: "16px" }}>
-          メールアドレスを入力してログインリンクを受け取ってください。
-        </p>
+      <div style={{ maxWidth: "560px", width: "100%", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "20px", background: "#fff" }}>
+        <h1 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>じいじの腎臓ノート ログイン</h1>
+        <p style={{ color: "#475569", marginBottom: "16px" }}>メールアドレスを入力してログインリンクを受け取ってください。</p>
 
         <form onSubmit={handleSubmit} style={{ display: "grid", gap: "12px" }}>
           <input
@@ -64,14 +53,8 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
             autoComplete="email"
-            style={{
-              width: "100%",
-              padding: "10px",
-              borderRadius: "10px",
-              border: "1px solid #cbd5e1",
-            }}
+            style={{ width: "100%", padding: "10px", borderRadius: "10px", border: "1px solid #cbd5e1" }}
           />
-
           <button
             type="submit"
             disabled={isSending}
