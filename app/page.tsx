@@ -1716,13 +1716,65 @@ export default function Page() {
   }
 
   function addVital() {
+    const weightText = weightInput.trim();
+    const systolicText = systolicInput.trim();
+    const diastolicText = diastolicInput.trim();
+
+    if (!weightText) {
+      setVitalCloudMessage("体重を入力してください。");
+      return;
+    }
+    if (!systolicText) {
+      setVitalCloudMessage("収縮期血圧を入力してください。");
+      return;
+    }
+    if (!diastolicText) {
+      setVitalCloudMessage("拡張期血圧を入力してください。");
+      return;
+    }
+
+    const weight = Number(weightText);
+    const systolic = Number(systolicText);
+    const diastolic = Number(diastolicText);
+
+    if (!Number.isFinite(weight)) {
+      setVitalCloudMessage("体重は数値で入力してください。");
+      return;
+    }
+    if (!Number.isFinite(systolic)) {
+      setVitalCloudMessage("収縮期血圧は数値で入力してください。");
+      return;
+    }
+    if (!Number.isFinite(diastolic)) {
+      setVitalCloudMessage("拡張期血圧は数値で入力してください。");
+      return;
+    }
+
+    if (weight < 20 || weight > 200) {
+      setVitalCloudMessage("体重は20〜200kgの範囲で入力してください。");
+      return;
+    }
+    if (systolic < 50 || systolic > 250) {
+      setVitalCloudMessage("収縮期血圧は50〜250の範囲で入力してください。");
+      return;
+    }
+    if (diastolic < 30 || diastolic > 150) {
+      setVitalCloudMessage("拡張期血圧は30〜150の範囲で入力してください。");
+      return;
+    }
+    if (diastolic >= systolic) {
+      setVitalCloudMessage("拡張期血圧は収縮期血圧より低く入力してください。");
+      return;
+    }
+
+    setVitalCloudMessage("");
     const entry: VitalEntry = {
       id: crypto.randomUUID(),
       date: vitalDate,
       time: vitalTime,
-      weight: weightInput,
-      systolic: systolicInput,
-      diastolic: diastolicInput,
+      weight: weightText,
+      systolic: systolicText,
+      diastolic: diastolicText,
     };
     setVitals((prev) => [...prev, entry]);
     setWeightInput("");
