@@ -2063,10 +2063,6 @@ export default function Page() {
                       )}
                     </div>
 
-                    <div className="button-row">
-                      <ActionButton label="読み込む" onClick={loadVitalsFromSupabase} color="#475569" />
-                      <ActionButton label="保存する" onClick={saveVitalsToSupabase} color="#0284c7" disabled={!canEdit} />
-                    </div>
                     {vitalCloudMessage ? (
                       <div className="muted-text">{vitalCloudMessage}</div>
                     ) : null}
@@ -2102,10 +2098,6 @@ export default function Page() {
                       </div>
                     )}
 
-                    <div className="button-row">
-                      <ActionButton label="読み込む" onClick={loadMealItemsFromSupabase} color="#475569" />
-                      <ActionButton label="保存する" onClick={saveMealItemsToSupabase} color="#0284c7" disabled={!canEdit} />
-                    </div>
                     {mealCloudMessage ? (
                       <div className="muted-text">{mealCloudMessage}</div>
                     ) : null}
@@ -2137,11 +2129,6 @@ export default function Page() {
                         placeholder="食欲がなかった、外食した、むくみが気になった、など"
                         className="textarea"
                       />
-                      <div className="top-gap button-row">
-                        <ActionButton label="メモを保存" onClick={saveMemo} color="#7c3aed" disabled={!canEdit} />
-                        <ActionButton label="読み込む" onClick={loadDailyLogFromSupabase} color="#475569" />
-                        <ActionButton label="保存する" onClick={saveDailyLogToSupabase} color="#0284c7" disabled={!canEdit} />
-                      </div>
                       {dailyLogCloudMessage ? (
                         <div className="muted-text top-gap">{dailyLogCloudMessage}</div>
                       ) : null}
@@ -2197,13 +2184,10 @@ export default function Page() {
                 </div>
 
                 <div className="subject-box" style={{ background: "#eff6ff" }}>
-                  <div className="sub-title">Supabase 保存</div>
+                  <div className="sub-title">同期について</div>
+                  <div className="muted-text">読み込みと保存は画面上部のボタンを使います。</div>
                   <div className="muted-text">ログイン中のメールアドレス: {authEmail || "未ログイン"}</div>
-                  <div className="button-row">
-                    <ActionButton label="読み込む" onClick={loadPatientFromSupabase} color="#0f766e" />
-                    <ActionButton label="保存する" onClick={savePatientToSupabase} color="#2563eb" disabled={!canEdit} />
-                  </div>
-                  <div className="muted-text">{patientCloudMessage}</div>
+                  {patientCloudMessage ? <div className="muted-text">{patientCloudMessage}</div> : null}
                 </div>
 
                 <div className="grid-2">
@@ -2271,10 +2255,7 @@ export default function Page() {
                     <input value={newSubjectName} onChange={(e) => setNewSubjectName(e.target.value)} placeholder="新しい科目名" className="input grow" />
                     <ActionButton label="科目を追加" onClick={addSubject} color="#475569" disabled={!canEdit} />
                   </div>
-                  <div className="button-row top-gap">
-                    <ActionButton label="読み込む" onClick={loadSubjectsAndFoodsFromSupabase} color="#475569" />
-                    <ActionButton label="保存する" onClick={saveSubjectsAndFoodsToSupabase} color="#0284c7" disabled={!canEdit} />
-                  </div>
+                  <div className="muted-text top-gap">読み込みと保存は画面上部のボタンを使います。</div>
                   {subjectFoodCloudMessage ? (
                     <div className="muted-text top-gap">{subjectFoodCloudMessage}</div>
                   ) : null}
