@@ -68,6 +68,11 @@ const LOGS_KEY = "ckd_logs_v5";
 const VITALS_KEY = "ckd_vitals_v5";
 const CUSTOM_FOODS_KEY = "ckd_custom_foods_v2";
 const SUBJECTS_KEY = "ckd_subjects_v1";
+const FAMILY_EDITOR_EMAIL = (process.env.NEXT_PUBLIC_FAMILY_EDITOR_EMAIL || "").trim();
+const FAMILY_VIEWER_EMAILS = (process.env.NEXT_PUBLIC_FAMILY_VIEWER_EMAILS || "")
+  .split(",")
+  .map((email) => email.trim())
+  .filter(Boolean);
 
 const baseFoods: FoodMasterItem[] = [
   { id: "rice150", subject: "主食", name: "ごはん", baseAmount: "150g", kcal: 234, protein: 3.8, sodium: 1, potassium: 44 },
@@ -126,6 +131,18 @@ function formatDate(date: string) {
   if (!date) return "";
   const [y, m, d] = date.split("-");
   return `${y}/${m}/${d}`;
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function resolveFamilyRole(email: string): "editor" | "viewer" | "blocked" | "guest" {
+  if (!email) return "guest";
+  const normalized = normalizeEmail(email);
+  if (normalized === normalizeEmail(FAMILY_EDITOR_EMAIL)) return "editor";
+  if (FAMILY_VIEWER_EMAILS.map(normalizeEmail).includes(normalized)) return "viewer";
+  return "blocked";
 }
 
 function getCurrentLog(logs: DailyLog[], date: string): DailyLog {
@@ -232,6 +249,32 @@ function getLatestVitalPerDate(vitals: VitalEntry[], dates: string[]) {
   });
 }
 
+function formatMonthDayTime(date: string, time: string) {
+  const d = date.slice(5);
+  const t = (time || "").slice(0, 5);
+  return t ? `${d} ${t}` : d;
+}
+
+function getRecentVitalSeries(vitals: VitalEntry[], endDate: string) {
+  const dates = last7Dates(endDate);
+  const startDate = dates[0];
+
+  return [...vitals]
+    .filter((v) => v.date >= startDate && v.date <= endDate)
+    .sort((a, b) => {
+      const av = `${a.date} ${a.time}`;
+      const bv = `${b.date} ${b.time}`;
+      return av.localeCompare(bv);
+    })
+    .map((v) => ({
+      date: v.date,
+      label: formatMonthDayTime(v.date, v.time),
+      weight: toNumber(v.weight),
+      systolic: toNumber(v.systolic),
+      diastolic: toNumber(v.diastolic),
+    }));
+}
+
 function get7DayLogs(logs: DailyLog[], endDate: string) {
   const dates = last7Dates(endDate);
   return dates.map((date) => getCurrentLog(logs, date));
@@ -324,7 +367,7 @@ function openWeeklyPrint(patient: Patient, logs: DailyLog[], vitals: VitalEntry[
   win.document.write(`
     <html>
       <head>
-        <title>1週間のまとめ</title>
+        <title>じいじの腎臓ノート（1週間のまとめ）</title>
         <style>
           @page { size: A4 portrait; margin: 10mm; }
           body { font-family: sans-serif; color: #0f172a; }
@@ -445,13 +488,15 @@ function ActionButton({
   label,
   onClick,
   color = "#2563eb",
+  disabled = false,
 }: {
   label: string;
   onClick: () => void;
   color?: string;
+  disabled?: boolean;
 }) {
   return (
-    <button onClick={onClick} className="action-btn" style={{ background: color }}>
+    <button type="button" onClick={onClick} disabled={disabled} className="action-btn" style={{ background: disabled ? "#94a3b8" : color, cursor: disabled ? "not-allowed" : "pointer" }}>
       {label}
     </button>
   );
@@ -661,7 +706,7 @@ function downloadCsv(patient: Patient, logs: DailyLog[], vitals: VitalEntry[], s
 
   const link = document.createElement("a");
   link.href = url;
-  link.download = `ckd-record-${selectedDate}.csv`;
+  link.download = `jiiji-kidney-note-${selectedDate}.csv`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -669,12 +714,23 @@ function downloadCsv(patient: Patient, logs: DailyLog[], vitals: VitalEntry[], s
 }
 
 export default function Page() {
-  const supabase = createClient();
+  const supabase = useMemo(() => {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY) {
+      return {
+        auth: {
+          getSession: async () => ({ data: { session: null }, error: null }),
+        },
+      } as ReturnType<typeof createClient>;
+    }
+    return createClient();
+  }, []);
   const [page, setPage] = useState<"dashboard" | "patient" | "meal">("dashboard");
   const [selectedDate, setSelectedDate] = useState(todayString());
 
   const [patient, setPatient] = useState<Patient>(emptyPatient);
   const [authEmail, setAuthEmail] = useState("");
+  const [familyRole, setFamilyRole] = useState<"editor" | "viewer" | "blocked" | "guest">("guest");
+  const [familySyncMessage, setFamilySyncMessage] = useState("");
   const [patientCloudMessage, setPatientCloudMessage] = useState("");
   const [dailyLogCloudMessage, setDailyLogCloudMessage] = useState("");
   const [vitalCloudMessage, setVitalCloudMessage] = useState("");
@@ -719,7 +775,9 @@ export default function Page() {
 
   useEffect(() => {
     getSignedInUser().then((user) => {
-      setAuthEmail(user?.email || "");
+      const email = user?.email || "";
+      setAuthEmail(email);
+      setFamilyRole(resolveFamilyRole(email));
     });
   }, []);
 
@@ -844,8 +902,7 @@ export default function Page() {
     };
   }, [packageServings, packageKcal, packageProtein, packageSaltEq, packagePotassium, packageAmount]);
 
-  const weekDates = useMemo(() => last7Dates(selectedDate), [selectedDate]);
-  const weekVitalSeries = useMemo(() => getLatestVitalPerDate(vitals, weekDates), [vitals, weekDates]);
+  const weekVitalSeries = useMemo(() => getRecentVitalSeries(vitals, selectedDate), [vitals, selectedDate]);
   const todayVitals = useMemo(() => {
     return [...vitals]
       .filter((v) => v.date === selectedDate)
@@ -853,6 +910,8 @@ export default function Page() {
   }, [vitals, selectedDate]);
 
   const summaryMessages = useMemo(() => buildSummaryMessages(totals, patient), [totals, patient]);
+  const canEdit = familyRole === "editor";
+  const canView = familyRole === "editor" || familyRole === "viewer";
 
   function savePatientField(key: keyof Patient, value: string) {
     setPatient((prev) => ({ ...prev, [key]: value }));
@@ -866,6 +925,36 @@ export default function Page() {
 
     if (error || !session?.user) return null;
     return session.user;
+  }
+
+  async function loadAllFromCloud() {
+    setFamilySyncMessage("読み込み中...");
+    try {
+      await loadPatientFromSupabase();
+      await loadDailyLogFromSupabase();
+      await loadMealItemsFromSupabase();
+      await loadVitalsFromSupabase();
+      setFamilySyncMessage("読み込みました。");
+    } catch (e) {
+      setFamilySyncMessage("読み込みに失敗しました。時間をおいて再度お試しください。");
+    }
+  }
+
+  async function saveAllToCloud() {
+    if (!canEdit) {
+      setFamilySyncMessage("閲覧専用です。保存はできません。");
+      return;
+    }
+    setFamilySyncMessage("保存中...");
+    try {
+      await savePatientToSupabase();
+      await saveDailyLogToSupabase();
+      await saveMealItemsToSupabase();
+      await saveVitalsToSupabase();
+      setFamilySyncMessage("保存しました。");
+    } catch (e) {
+      setFamilySyncMessage("保存に失敗しました。時間をおいて再度お試しください。");
+    }
   }
 
   async function loadPatientFromSupabase() {
@@ -914,6 +1003,10 @@ export default function Page() {
   }
 
   async function savePatientToSupabase() {
+    if (!canEdit) {
+      setPatientCloudMessage("閲覧専用です。保存できません。");
+      return;
+    }
     setPatientCloudMessage("保存中...");
     const user = await getSignedInUser();
 
@@ -1021,6 +1114,10 @@ export default function Page() {
   }
 
   async function saveDailyLogToSupabase() {
+    if (!canEdit) {
+      setDailyLogCloudMessage("閲覧専用です。保存できません。");
+      return;
+    }
     setDailyLogCloudMessage("保存中...");
     const user = await getSignedInUser();
 
@@ -1116,6 +1213,10 @@ export default function Page() {
   }
 
   async function saveVitalsToSupabase() {
+    if (!canEdit) {
+      setVitalCloudMessage("閲覧専用です。保存できません。");
+      return;
+    }
     setVitalCloudMessage("保存中...");
     const user = await getSignedInUser();
 
@@ -1139,7 +1240,8 @@ export default function Page() {
     }
 
     if (!todayVitals.length) {
-      setVitalCloudMessage("この日の体重・血圧記録は0件として保存しました。");
+      await loadVitalsFromSupabase();
+      setVitalCloudMessage("この日の体重・血圧記録は0件として保存しました。最新データを再読込しました。");
       return;
     }
 
@@ -1161,7 +1263,8 @@ export default function Page() {
       return;
     }
 
-    setVitalCloudMessage("Supabaseの体重・血圧記録を更新しました。");
+    await loadVitalsFromSupabase();
+    setVitalCloudMessage("Supabaseの体重・血圧記録を更新しました。最新データを再読込しました。");
   }
 
   async function loadMealItemsFromSupabase() {
@@ -1262,6 +1365,10 @@ export default function Page() {
   }
 
   async function saveMealItemsToSupabase() {
+    if (!canEdit) {
+      setMealCloudMessage("閲覧専用です。保存できません。");
+      return;
+    }
     setMealCloudMessage("保存中...");
     const user = await getSignedInUser();
 
@@ -1306,7 +1413,8 @@ export default function Page() {
     }
 
     if (!currentLog.items.length) {
-      setMealCloudMessage("この日の食品一覧は0件として保存しました。");
+      await loadMealItemsFromSupabase();
+      setMealCloudMessage("この日の食品一覧は0件として保存しました。最新データを再読込しました。");
       return;
     }
 
@@ -1334,7 +1442,8 @@ export default function Page() {
       return;
     }
 
-    setMealCloudMessage("Supabaseの食事記録を更新しました。");
+    await loadMealItemsFromSupabase();
+    setMealCloudMessage("Supabaseの食事記録を更新しました。最新データを再読込しました。");
   }
 
   async function loadSubjectsAndFoodsFromSupabase() {
@@ -1509,6 +1618,28 @@ export default function Page() {
   }
 
   function addMealItem() {
+    if (!canEdit) {
+      setMealCloudMessage("閲覧専用です。編集できません。");
+      return;
+    }
+    if (!selectedFood) {
+      setMealCloudMessage("食品候補を選択してください。");
+      return;
+    }
+    if (!mealType.trim()) {
+      setMealCloudMessage("食事区分を選択してください。");
+      return;
+    }
+    if (!Number.isFinite(mealPreview.servings) || mealPreview.servings <= 0 || mealPreview.servings > 10) {
+      setMealCloudMessage("量の倍率は0より大きく10以下で入力してください。");
+      return;
+    }
+    if ([mealPreview.kcal, mealPreview.protein, mealPreview.sodium, mealPreview.potassium].some((v) => !Number.isFinite(v) || v < 0)) {
+      setMealCloudMessage("栄養値が不正です。入力内容を確認してください。");
+      return;
+    }
+
+    setMealCloudMessage("");
     const item: MealItem = {
       id: crypto.randomUUID(),
       mealType,
@@ -1547,11 +1678,47 @@ export default function Page() {
   }
 
   function addPackageItem() {
+    if (!canEdit) {
+      setMealCloudMessage("閲覧専用です。編集できません。");
+      return;
+    }
     if (!packageName.trim()) {
-      alert("商品名を入れてください");
+      setMealCloudMessage("商品名を入力してください。");
+      return;
+    }
+    if (!mealType.trim()) {
+      setMealCloudMessage("食事区分を選択してください。");
       return;
     }
 
+    const servings = Number(packageServings);
+    const kcal = Number(packageKcal);
+    const protein = Number(packageProtein);
+    const saltEq = Number(packageSaltEq);
+    const potassium = Number(packagePotassium);
+
+    if (!Number.isFinite(servings) || servings <= 0 || servings > 10) {
+      setMealCloudMessage("量の倍率は0より大きく10以下で入力してください。");
+      return;
+    }
+    if (!Number.isFinite(kcal) || kcal < 0 || kcal > 5000) {
+      setMealCloudMessage("カロリーは0〜5000の範囲で入力してください。");
+      return;
+    }
+    if (!Number.isFinite(protein) || protein < 0 || protein > 300) {
+      setMealCloudMessage("たんぱく質は0〜300gの範囲で入力してください。");
+      return;
+    }
+    if (!Number.isFinite(saltEq) || saltEq < 0 || saltEq > 30) {
+      setMealCloudMessage("食塩相当量は0〜30gの範囲で入力してください。");
+      return;
+    }
+    if (!Number.isFinite(potassium) || potassium < 0 || potassium > 5000) {
+      setMealCloudMessage("カリウムは0〜5000mgの範囲で入力してください。");
+      return;
+    }
+
+    setMealCloudMessage("");
     const item: MealItem = {
       id: crypto.randomUUID(),
       mealType,
@@ -1652,6 +1819,10 @@ export default function Page() {
   }
 
   function deleteMealItem(id: string) {
+    if (!canEdit) {
+      setMealCloudMessage("閲覧専用です。編集できません。");
+      return;
+    }
     const nextItems = currentLog.items.filter((item) => item.id !== id);
     const nextTotals = calculateTotals(nextItems);
 
@@ -1669,6 +1840,10 @@ export default function Page() {
   }
 
   function saveMemo() {
+    if (!canEdit) {
+      setDailyLogCloudMessage("閲覧専用です。編集できません。");
+      return;
+    }
     const nextLog: DailyLog = {
       date: selectedDate,
       items: currentLog.items,
@@ -1689,13 +1864,69 @@ export default function Page() {
   }
 
   function addVital() {
+    if (!canEdit) {
+      setVitalCloudMessage("閲覧専用です。編集できません。");
+      return;
+    }
+    const weightText = weightInput.trim();
+    const systolicText = systolicInput.trim();
+    const diastolicText = diastolicInput.trim();
+
+    if (!weightText) {
+      setVitalCloudMessage("体重を入力してください。");
+      return;
+    }
+    if (!systolicText) {
+      setVitalCloudMessage("収縮期血圧を入力してください。");
+      return;
+    }
+    if (!diastolicText) {
+      setVitalCloudMessage("拡張期血圧を入力してください。");
+      return;
+    }
+
+    const weight = Number(weightText);
+    const systolic = Number(systolicText);
+    const diastolic = Number(diastolicText);
+
+    if (!Number.isFinite(weight)) {
+      setVitalCloudMessage("体重は数値で入力してください。");
+      return;
+    }
+    if (!Number.isFinite(systolic)) {
+      setVitalCloudMessage("収縮期血圧は数値で入力してください。");
+      return;
+    }
+    if (!Number.isFinite(diastolic)) {
+      setVitalCloudMessage("拡張期血圧は数値で入力してください。");
+      return;
+    }
+
+    if (weight < 20 || weight > 200) {
+      setVitalCloudMessage("体重は20〜200kgの範囲で入力してください。");
+      return;
+    }
+    if (systolic < 50 || systolic > 250) {
+      setVitalCloudMessage("収縮期血圧は50〜250の範囲で入力してください。");
+      return;
+    }
+    if (diastolic < 30 || diastolic > 150) {
+      setVitalCloudMessage("拡張期血圧は30〜150の範囲で入力してください。");
+      return;
+    }
+    if (diastolic >= systolic) {
+      setVitalCloudMessage("拡張期血圧は収縮期血圧より低く入力してください。");
+      return;
+    }
+
+    setVitalCloudMessage("");
     const entry: VitalEntry = {
       id: crypto.randomUUID(),
       date: vitalDate,
       time: vitalTime,
-      weight: weightInput,
-      systolic: systolicInput,
-      diastolic: diastolicInput,
+      weight: weightText,
+      systolic: systolicText,
+      diastolic: diastolicText,
     };
     setVitals((prev) => [...prev, entry]);
     setWeightInput("");
@@ -1705,7 +1936,27 @@ export default function Page() {
   }
 
   function deleteVital(id: string) {
+    if (!canEdit) {
+      setVitalCloudMessage("閲覧専用です。編集できません。");
+      return;
+    }
     setVitals((prev) => prev.filter((v) => v.id !== id));
+  }
+
+  if (!canView) {
+    return (
+      <main className="page-bg">
+        <div className="container">
+          <SectionCard title="じいじの腎臓ノート">
+            <div className="muted-text">
+              {familyRole === "blocked"
+                ? "このメールアドレスでは利用できません。家族用アカウントでログインしてください。"
+                : "ログインしてから利用してください。"}
+            </div>
+          </SectionCard>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -1714,11 +1965,19 @@ export default function Page() {
         <div className="hero-card">
           <div className="hero-row">
             <div>
-              <div className="hero-eyebrow">CKD 栄養管理アプリ 試作版</div>
-              <h1 className="hero-title">腎臓ノート</h1>
+              <div className="hero-eyebrow">家族限定 CKD 記録アプリ</div>
+              <h1 className="hero-title">じいじの腎臓ノート</h1>
               <div className="hero-text">
                 科目の自作追加、スマホ対応、直近7日間グラフ、1週間まとめPDF印刷まで入れた版です。
               </div>
+              <div className="top-gap-sm muted-text">
+                {canEdit ? "編集モードです。" : "閲覧専用です。"}
+              </div>
+              <div className="top-gap button-row">
+                <ActionButton label="読み込む" onClick={loadAllFromCloud} color="#475569" />
+                <ActionButton label="保存する" onClick={saveAllToCloud} color="#0284c7" />
+              </div>
+              {familySyncMessage ? <div className="muted-text top-gap-sm">{familySyncMessage}</div> : null}
             </div>
 
             <div className="nav-wrap">
@@ -1770,13 +2029,13 @@ export default function Page() {
                 <SectionCard title="② 今日の記録">
                   <div className="stack">
                     <div className="grid-5">
-                      <input type="date" value={vitalDate} onChange={(e) => setVitalDate(e.target.value)} className="input" />
-                      <input type="time" value={vitalTime} onChange={(e) => setVitalTime(e.target.value)} className="input" />
-                      <input placeholder="体重(kg)" value={weightInput} onChange={(e) => setWeightInput(e.target.value)} className="input" />
-                      <input placeholder="収縮期" value={systolicInput} onChange={(e) => setSystolicInput(e.target.value)} className="input" />
+                      <input type="date" value={vitalDate} onChange={(e) => setVitalDate(e.target.value)} className="input" disabled={!canEdit} />
+                      <input type="time" value={vitalTime} onChange={(e) => setVitalTime(e.target.value)} className="input" disabled={!canEdit} />
+                      <input placeholder="体重(kg)" value={weightInput} onChange={(e) => setWeightInput(e.target.value)} className="input" readOnly={!canEdit} />
+                      <input placeholder="収縮期" value={systolicInput} onChange={(e) => setSystolicInput(e.target.value)} className="input" readOnly={!canEdit} />
                       <div className="inline-row">
-                        <input placeholder="拡張期" value={diastolicInput} onChange={(e) => setDiastolicInput(e.target.value)} className="input grow" />
-                        <ActionButton label="追加" onClick={addVital} color="#0f172a" />
+                        <input placeholder="拡張期" value={diastolicInput} onChange={(e) => setDiastolicInput(e.target.value)} className="input grow" readOnly={!canEdit} />
+                        <ActionButton label="追加" onClick={addVital} color="#0f172a" disabled={!canEdit} />
                       </div>
                     </div>
 
@@ -1797,7 +2056,7 @@ export default function Page() {
                               <div className="small-text">
                                 {v.time} / 体重 {v.weight || "-"} kg / 血圧 {v.systolic || "-"} - {v.diastolic || "-"}
                               </div>
-                              <button onClick={() => deleteVital(v.id)} className="ghost-btn">削除</button>
+                              <button onClick={() => deleteVital(v.id)} className="ghost-btn" disabled={!canEdit}>削除</button>
                             </div>
                           ))}
                         </div>
@@ -1805,8 +2064,8 @@ export default function Page() {
                     </div>
 
                     <div className="button-row">
-                      <ActionButton label="Supabaseから読み込む" onClick={loadVitalsFromSupabase} color="#475569" />
-                      <ActionButton label="Supabaseに保存する" onClick={saveVitalsToSupabase} color="#0284c7" />
+                      <ActionButton label="読み込む" onClick={loadVitalsFromSupabase} color="#475569" />
+                      <ActionButton label="保存する" onClick={saveVitalsToSupabase} color="#0284c7" disabled={!canEdit} />
                     </div>
                     {vitalCloudMessage ? (
                       <div className="muted-text">{vitalCloudMessage}</div>
@@ -1837,15 +2096,15 @@ export default function Page() {
                                 {item.kcal} kcal / {item.protein} g / Na {item.sodium} mg / K {item.potassium} mg / {item.sourceType === "package" ? "既製品" : "候補"}
                               </span>
                             </div>
-                            <button onClick={() => deleteMealItem(item.id)} className="ghost-btn">削除</button>
+                            <button onClick={() => deleteMealItem(item.id)} className="ghost-btn" disabled={!canEdit}>削除</button>
                           </div>
                         ))}
                       </div>
                     )}
 
                     <div className="button-row">
-                      <ActionButton label="Supabaseから読み込む" onClick={loadMealItemsFromSupabase} color="#475569" />
-                      <ActionButton label="Supabaseに保存する" onClick={saveMealItemsToSupabase} color="#0284c7" />
+                      <ActionButton label="読み込む" onClick={loadMealItemsFromSupabase} color="#475569" />
+                      <ActionButton label="保存する" onClick={saveMealItemsToSupabase} color="#0284c7" disabled={!canEdit} />
                     </div>
                     {mealCloudMessage ? (
                       <div className="muted-text">{mealCloudMessage}</div>
@@ -1874,13 +2133,14 @@ export default function Page() {
                       <textarea
                         value={memoInput}
                         onChange={(e) => setMemoInput(e.target.value)}
+                        readOnly={!canEdit}
                         placeholder="食欲がなかった、外食した、むくみが気になった、など"
                         className="textarea"
                       />
                       <div className="top-gap button-row">
-                        <ActionButton label="メモを保存" onClick={saveMemo} color="#7c3aed" />
-                        <ActionButton label="Supabaseから読み込む" onClick={loadDailyLogFromSupabase} color="#475569" />
-                        <ActionButton label="Supabaseに保存する" onClick={saveDailyLogToSupabase} color="#0284c7" />
+                        <ActionButton label="メモを保存" onClick={saveMemo} color="#7c3aed" disabled={!canEdit} />
+                        <ActionButton label="読み込む" onClick={loadDailyLogFromSupabase} color="#475569" />
+                        <ActionButton label="保存する" onClick={saveDailyLogToSupabase} color="#0284c7" disabled={!canEdit} />
                       </div>
                       {dailyLogCloudMessage ? (
                         <div className="muted-text top-gap">{dailyLogCloudMessage}</div>
@@ -1933,29 +2193,29 @@ export default function Page() {
               <div className="stack">
                 <div>
                   <div className="sub-title">患者写真</div>
-                  <input type="file" accept="image/*" onChange={handlePhotoChange} />
+                  <input type="file" accept="image/*" onChange={handlePhotoChange} disabled={!canEdit} />
                 </div>
 
                 <div className="subject-box" style={{ background: "#eff6ff" }}>
                   <div className="sub-title">Supabase 保存</div>
                   <div className="muted-text">ログイン中のメールアドレス: {authEmail || "未ログイン"}</div>
                   <div className="button-row">
-                    <ActionButton label="Supabaseから読み込む" onClick={loadPatientFromSupabase} color="#0f766e" />
-                    <ActionButton label="Supabaseに保存する" onClick={savePatientToSupabase} color="#2563eb" />
+                    <ActionButton label="読み込む" onClick={loadPatientFromSupabase} color="#0f766e" />
+                    <ActionButton label="保存する" onClick={savePatientToSupabase} color="#2563eb" disabled={!canEdit} />
                   </div>
                   <div className="muted-text">{patientCloudMessage}</div>
                 </div>
 
                 <div className="grid-2">
-                  <input placeholder="患者名" value={patient.name} onChange={(e) => savePatientField("name", e.target.value)} className="input" />
-                  <input placeholder="年齢" value={patient.age} onChange={(e) => savePatientField("age", e.target.value)} className="input" />
-                  <input placeholder="eGFR" value={patient.egfr} onChange={(e) => savePatientField("egfr", e.target.value)} className="input" />
-                  <select value={patient.dialysis} onChange={(e) => savePatientField("dialysis", e.target.value)} className="input">
+                  <input placeholder="患者名" value={patient.name} onChange={(e) => savePatientField("name", e.target.value)} className="input" readOnly={!canEdit} />
+                  <input placeholder="年齢" value={patient.age} onChange={(e) => savePatientField("age", e.target.value)} className="input" readOnly={!canEdit} />
+                  <input placeholder="eGFR" value={patient.egfr} onChange={(e) => savePatientField("egfr", e.target.value)} className="input" readOnly={!canEdit} />
+                  <select value={patient.dialysis} onChange={(e) => savePatientField("dialysis", e.target.value)} className="input" disabled={!canEdit}>
                     <option>なし</option>
                     <option>血液透析</option>
                     <option>腹膜透析</option>
                   </select>
-                  <select value={patient.highPotassium} onChange={(e) => savePatientField("highPotassium", e.target.value)} className="input">
+                  <select value={patient.highPotassium} onChange={(e) => savePatientField("highPotassium", e.target.value)} className="input" disabled={!canEdit}>
                     <option>なし</option>
                     <option>あり</option>
                   </select>
@@ -1964,10 +2224,10 @@ export default function Page() {
                 <div className="sub-title">主治医から言われた目標値</div>
 
                 <div className="grid-2">
-                  <input placeholder="目標カロリー(kcal)" value={patient.targetKcal} onChange={(e) => savePatientField("targetKcal", e.target.value)} className="input" />
-                  <input placeholder="目標たんぱく質(g)" value={patient.targetProtein} onChange={(e) => savePatientField("targetProtein", e.target.value)} className="input" />
-                  <input placeholder="目標ナトリウム(mg)" value={patient.targetSodium} onChange={(e) => savePatientField("targetSodium", e.target.value)} className="input" />
-                  <input placeholder="目標カリウム(mg)" value={patient.targetPotassium} onChange={(e) => savePatientField("targetPotassium", e.target.value)} className="input" />
+                  <input placeholder="目標カロリー(kcal)" value={patient.targetKcal} onChange={(e) => savePatientField("targetKcal", e.target.value)} className="input" readOnly={!canEdit} />
+                  <input placeholder="目標たんぱく質(g)" value={patient.targetProtein} onChange={(e) => savePatientField("targetProtein", e.target.value)} className="input" readOnly={!canEdit} />
+                  <input placeholder="目標ナトリウム(mg)" value={patient.targetSodium} onChange={(e) => savePatientField("targetSodium", e.target.value)} className="input" readOnly={!canEdit} />
+                  <input placeholder="目標カリウム(mg)" value={patient.targetPotassium} onChange={(e) => savePatientField("targetPotassium", e.target.value)} className="input" readOnly={!canEdit} />
                 </div>
 
                 <div>
@@ -2009,11 +2269,11 @@ export default function Page() {
                   <div className="sub-title">科目を追加する</div>
                   <div className="inline-row">
                     <input value={newSubjectName} onChange={(e) => setNewSubjectName(e.target.value)} placeholder="新しい科目名" className="input grow" />
-                    <ActionButton label="科目を追加" onClick={addSubject} color="#475569" />
+                    <ActionButton label="科目を追加" onClick={addSubject} color="#475569" disabled={!canEdit} />
                   </div>
                   <div className="button-row top-gap">
-                    <ActionButton label="Supabaseから読み込む" onClick={loadSubjectsAndFoodsFromSupabase} color="#475569" />
-                    <ActionButton label="Supabaseに保存する" onClick={saveSubjectsAndFoodsToSupabase} color="#0284c7" />
+                    <ActionButton label="読み込む" onClick={loadSubjectsAndFoodsFromSupabase} color="#475569" />
+                    <ActionButton label="保存する" onClick={saveSubjectsAndFoodsToSupabase} color="#0284c7" disabled={!canEdit} />
                   </div>
                   {subjectFoodCloudMessage ? (
                     <div className="muted-text top-gap">{subjectFoodCloudMessage}</div>
@@ -2065,7 +2325,7 @@ export default function Page() {
                     {selectedFood.note ? <div className="note-text">{selectedFood.note}</div> : null}
                   </div>
 
-                  <ActionButton label="この食品を追加" onClick={addMealItem} color="#16a34a" />
+                  <ActionButton label="この食品を追加" onClick={addMealItem} color="#16a34a" disabled={!canEdit} />
                 </div>
 
                 <div className="subject-box subject-b">
@@ -2108,8 +2368,8 @@ export default function Page() {
                   </div>
 
                   <div className="button-row">
-                    <ActionButton label="この既製品を追加" onClick={addPackageItem} color="#ea580c" />
-                    <ActionButton label="候補にも保存" onClick={savePackageAsCandidate} color="#92400e" />
+                    <ActionButton label="この既製品を追加" onClick={addPackageItem} color="#ea580c" disabled={!canEdit} />
+                    <ActionButton label="候補にも保存" onClick={savePackageAsCandidate} color="#92400e" disabled={!canEdit} />
                   </div>
                 </div>
 
@@ -2138,7 +2398,7 @@ export default function Page() {
                   </div>
 
                   <div className="button-row">
-                    <ActionButton label="候補に保存" onClick={saveCustomFood} color="#7c3aed" />
+                    <ActionButton label="候補に保存" onClick={saveCustomFood} color="#7c3aed" disabled={!canEdit} />
                     <ActionButton label="表画面へ戻る" onClick={() => setPage("dashboard")} color="#0f172a" />
                   </div>
                 </div>
