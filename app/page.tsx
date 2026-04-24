@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -1965,10 +1965,10 @@ export default function Page() {
         <div className="hero-card">
           <div className="hero-row">
             <div>
-              <div className="hero-eyebrow">家族限定 CKD 記録アプリ</div>
+              <div className="hero-eyebrow">家族限定アプリ</div>
               <h1 className="hero-title">じいじの腎臓ノート</h1>
               <div className="hero-text">
-                科目の自作追加、スマホ対応、直近7日間グラフ、1週間まとめPDF印刷まで入れた版です。
+                腎不全に向きあい頑張っているじいじへの応援ノート
               </div>
               <div className="top-gap-sm muted-text">
                 {canEdit ? "編集モードです。" : "閲覧専用です。"}
@@ -2480,3 +2480,4 @@ export default function Page() {
     </main>
   );
 }
+
