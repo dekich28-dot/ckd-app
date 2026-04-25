@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
 type Patient = {
@@ -2161,14 +2162,25 @@ export default function Page() {
                   <MetricBar label="カリウム" total={totals.potassium} target={patient.targetPotassium} unit="mg" mode="upper" />
                 </SectionCard>
 
-                <SectionCard title="更新ポイント">
-                  <div className="muted-text">
-                    科目は自分で追加できます。<br />
-                    直近7日間のグラフ表示に変更しました。<br />
-                    メモはCSVと1週間まとめの両方で見返せます。<br />
-                    1週間まとめには、前向きになれるコメントを入れています。
-                  </div>
-                </SectionCard>
+<SectionCard title="更新ポイント">
+  <div className="desktop-only muted-text">
+    科目は自分で追加できます。<br />
+    直近7日間のグラフ表示に変更しました。<br />
+    メモはCSVと1週間まとめの両方で見返せます。<br />
+    1週間まとめには、前向きになれるコメントを入れています。
+  </div>
+
+  <div className="mobile-only">
+    <Image
+      src="/jiiji-illust.jpg"
+      alt="じいじへの応援イラスト"
+      width={1024}
+      height={1536}
+      className="mobile-support-image"
+      priority
+    />
+  </div>
+</SectionCard>
               </div>
             </div>
           </div>
