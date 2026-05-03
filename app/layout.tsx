@@ -4,11 +4,6 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "じいじの腎臓ノート",
   description: "家族限定のCKD記録アプリ",
-  icons: {
-    icon: "/icon.png",
-    shortcut: "/icon.png",
-    apple: "/icon.png",
-  },
 };
 
 export default function RootLayout({

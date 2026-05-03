@@ -41,39 +41,65 @@ export default function LoginPage() {
   }
 
   return (
-    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: "24px" }}>
-      <div style={{ maxWidth: "560px", width: "100%", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "20px", background: "#fff" }}>
-        <h1 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>じいじの腎臓ノート ログイン</h1>
-        <p style={{ color: "#475569", marginBottom: "16px" }}>メールアドレスを入力してログインリンクを受け取ってください。</p>
+    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: "16px", background: "#f5f9ff" }}>
+      <div style={{ maxWidth: "420px", width: "100%", border: "1px solid #dbeafe", borderRadius: "18px", padding: "20px", background: "#fff", boxShadow: "0 4px 16px rgba(15,23,42,0.05)" }}>
+        <div style={{ width: "52px", height: "52px", borderRadius: "14px", background: "#e0f2fe", display: "grid", placeItems: "center", fontSize: "26px", marginBottom: "10px" }}>📝</div>
+        <h1 style={{ fontSize: "26px", fontWeight: 800, margin: "0 0 2px", color: "#0f172a", lineHeight: 1.25 }}>じいじの腎臓ノート</h1>
+        <div style={{ fontSize: "17px", fontWeight: 700, color: "#0369a1", marginBottom: "8px" }}>ログイン</div>
+        <p style={{ color: "#475569", margin: "0 0 16px", fontSize: "15px", lineHeight: 1.6 }}>
+          家族用メールアドレスを入力して、ログインメールを受け取ってください。
+        </p>
 
         <form onSubmit={handleSubmit} style={{ display: "grid", gap: "12px" }}>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
+            placeholder="例: family@example.com"
             autoComplete="email"
-            style={{ width: "100%", padding: "10px", borderRadius: "10px", border: "1px solid #cbd5e1" }}
+            style={{
+              width: "100%",
+              minHeight: "50px",
+              padding: "12px 14px",
+              borderRadius: "14px",
+              border: "1px solid #bfdbfe",
+              fontSize: "16px",
+              color: "#0f172a",
+            }}
           />
           <button
             type="submit"
             disabled={isSending}
             style={{
               border: "none",
-              borderRadius: "10px",
-              padding: "10px 14px",
-              background: isSending ? "#94a3b8" : "#2563eb",
+              borderRadius: "14px",
+              minHeight: "50px",
+              padding: "12px 14px",
+              background: isSending ? "#93c5fd" : "#0284c7",
               color: "white",
-              fontWeight: 600,
+              fontWeight: 700,
+              fontSize: "16px",
               cursor: isSending ? "not-allowed" : "pointer",
             }}
           >
-            {isSending ? "送信中..." : "ログインリンクを送信する"}
+            {isSending ? "送信中..." : "ログインメールを送る"}
           </button>
         </form>
 
-        {message ? <p style={{ marginTop: "12px", color: "#065f46" }}>{message}</p> : null}
-        {errorMessage ? <p style={{ marginTop: "12px", color: "#b91c1c" }}>{errorMessage}</p> : null}
+        {message ? (
+          <p style={{ marginTop: "12px", color: "#166534", background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: "12px", padding: "10px 12px", fontSize: "14px" }}>
+            {message}
+          </p>
+        ) : null}
+        {errorMessage ? (
+          <p style={{ marginTop: "12px", color: "#991b1b", background: "#fee2e2", border: "1px solid #fecaca", borderRadius: "12px", padding: "10px 12px", fontSize: "14px" }}>
+            {errorMessage}
+          </p>
+        ) : null}
+
+        <p style={{ marginTop: "12px", color: "#64748b", fontSize: "12px", lineHeight: 1.55 }}>
+          最新のメールを開いてログインしてください。古いメールでは入れないことがあります。
+        </p>
       </div>
     </main>
   );

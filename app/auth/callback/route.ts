@@ -1,22 +1,28 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const next = requestUrl.searchParams.get("next") ?? "/";
+  const nextPath = requestUrl.searchParams.get("next");
+
+  const redirectToRoot = NextResponse.redirect(new URL("/", requestUrl.origin));
+  const redirectToLogin = NextResponse.redirect(new URL("/login", requestUrl.origin));
+
+  if (!code) {
+    return redirectToLogin;
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
-  if (!code || !supabaseUrl || !supabaseKey) {
-    return NextResponse.redirect(new URL("/login", requestUrl.origin));
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return redirectToLogin;
   }
 
   const cookieStore = await cookies();
-
-  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -30,11 +36,13 @@ export async function GET(request: Request) {
   });
 
   const { error } = await supabase.auth.exchangeCodeForSession(code);
-
   if (error) {
-    return NextResponse.redirect(new URL("/login", requestUrl.origin));
+    return redirectToLogin;
   }
 
-  const safeNext = next.startsWith("/") ? next : "/";
-  return NextResponse.redirect(new URL(safeNext, requestUrl.origin));
+  if (nextPath && nextPath.startsWith("/")) {
+    return NextResponse.redirect(new URL(nextPath, requestUrl.origin));
+  }
+
+  return redirectToRoot;
 }

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
@@ -725,13 +725,15 @@ export default function Page() {
     }
     return createClient();
   }, []);
-  const [page, setPage] = useState<"dashboard" | "patient" | "meal">("dashboard");
+  const [page, setPage] = useState<"home" | "record" | "food" | "memo" | "settings">("home");
   const [selectedDate, setSelectedDate] = useState(todayString());
 
   const [patient, setPatient] = useState<Patient>(emptyPatient);
   const [authEmail, setAuthEmail] = useState("");
   const [familyRole, setFamilyRole] = useState<"editor" | "viewer" | "blocked" | "guest">("guest");
   const [familySyncMessage, setFamilySyncMessage] = useState("");
+  const [syncTone, setSyncTone] = useState<"info" | "good" | "error">("info");
+  const [hasAutoLoaded, setHasAutoLoaded] = useState(false);
   const [patientCloudMessage, setPatientCloudMessage] = useState("");
   const [dailyLogCloudMessage, setDailyLogCloudMessage] = useState("");
   const [vitalCloudMessage, setVitalCloudMessage] = useState("");
@@ -740,6 +742,9 @@ export default function Page() {
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [vitals, setVitals] = useState<VitalEntry[]>([]);
   const [customFoods, setCustomFoods] = useState<FoodMasterItem[]>([]);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedSnapshotRef = useRef("");
+  const isAutoSavingRef = useRef(false);
   const [customSubjects, setCustomSubjects] = useState<string[]>([]);
 
   const [memoInput, setMemoInput] = useState("");
@@ -1982,14 +1987,14 @@ export default function Page() {
             </div>
 
             <div className="nav-wrap">
-              <NavButton active={page === "dashboard"} label="表画面" onClick={() => setPage("dashboard")} />
-              <NavButton active={page === "patient"} label="患者設定画面" onClick={() => setPage("patient")} />
-              <NavButton active={page === "meal"} label="食事設定画面" onClick={() => setPage("meal")} />
+              <NavButton active={page === "home"} label="ホーム" onClick={() => setPage("home")} />
+              <NavButton active={page === "settings"} label="設定" onClick={() => setPage("settings")} />
+              <NavButton active={page === "food"} label="食事" onClick={() => setPage("food")} />
             </div>
           </div>
         </div>
 
-        {page === "dashboard" && (
+        {page === "home" && (
           <div className="stack">
             <div className="top-filter">
               <label className="label-inline">表示日</label>
@@ -2077,7 +2082,7 @@ export default function Page() {
                         <div className="sub-title">食品を入力したい時は食事設定画面へ</div>
                         <div className="muted-text">食品候補、既製品入力、記載されていない食品の追加をまとめています。</div>
                       </div>
-                      <ActionButton label="食事設定画面へ" onClick={() => setPage("meal")} color="#0284c7" />
+                      <ActionButton label="食事画面へ" onClick={() => setPage("food")} color="#0284c7" />
                     </div>
 
                     {currentLog.items.length === 0 ? (
@@ -2186,7 +2191,7 @@ export default function Page() {
           </div>
         )}
 
-        {page === "patient" && (
+        {page === "settings" && (
           <div className="two-col">
             <SectionCard title="患者設定画面">
               <div className="stack">
@@ -2227,7 +2232,7 @@ export default function Page() {
                 </div>
 
                 <div>
-                  <ActionButton label="表画面へ戻る" onClick={() => setPage("dashboard")} color="#0f172a" />
+                  <ActionButton label="ホームへ戻る" onClick={() => setPage("home")} color="#0f172a" />
                 </div>
               </div>
             </SectionCard>
@@ -2240,7 +2245,7 @@ export default function Page() {
           </div>
         )}
 
-        {page === "meal" && (
+        {page === "food" && (
           <div className="two-col">
             <SectionCard title="食事設定画面">
               <div className="stack">
@@ -2392,7 +2397,7 @@ export default function Page() {
 
                   <div className="button-row">
                     <ActionButton label="候補に保存" onClick={saveCustomFood} color="#7c3aed" disabled={!canEdit} />
-                    <ActionButton label="表画面へ戻る" onClick={() => setPage("dashboard")} color="#0f172a" />
+                    <ActionButton label="ホームへ戻る" onClick={() => setPage("home")} color="#0f172a" />
                   </div>
                 </div>
               </div>
@@ -2492,4 +2497,8 @@ export default function Page() {
     </main>
   );
 }
+
+
+
+
 

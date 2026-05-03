@@ -24,28 +24,3 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
-
-.desktop-only {
-  display: block;
-}
-
-.mobile-only {
-  display: none;
-}
-
-.mobile-support-image {
-  width: 100%;
-  height: auto;
-  border-radius: 16px;
-  display: block;
-}
-
-@media (max-width: 700px) {
-  .desktop-only {
-    display: none;
-  }
-
-  .mobile-only {
-    display: block;
-  }
-}
