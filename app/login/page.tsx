@@ -3,6 +3,14 @@
 import { FormEvent, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+function timeoutPromise(ms: number) {
+  return new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(new Error("通信がタイムアウトしました。時間をおいてもう一度お試しください。"));
+    }, ms);
+  });
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -25,12 +33,17 @@ export default function LoginPage() {
     try {
       const supabase = createClient();
 
-      const { error } = await supabase.auth.signInWithOtp({
-        email: trimmedEmail,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
+      const result = await Promise.race([
+        supabase.auth.signInWithOtp({
+          email: trimmedEmail,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
+        }),
+        timeoutPromise(15000),
+      ]);
+
+      const { error } = result as { error: { message: string } | null };
 
       if (error) {
         setErrorMessage(`送信に失敗しました: ${error.message}`);
