@@ -21,32 +21,99 @@ export default function LoginPage() {
     }
 
     setIsSending(true);
-    const supabase = createClient();
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email: trimmedEmail,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    try {
+      const supabase = createClient();
 
-    setIsSending(false);
+      const { error } = await supabase.auth.signInWithOtp({
+        email: trimmedEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
 
-    if (error) {
-      setErrorMessage(`送信に失敗しました: ${error.message}`);
-      return;
+      if (error) {
+        setErrorMessage(`送信に失敗しました: ${error.message}`);
+        return;
+      }
+
+      setMessage("メールを送信しました");
+    } catch (error) {
+      const text =
+        error instanceof Error ? error.message : "不明なエラーが起きました。";
+      setErrorMessage(`送信中にエラーが起きました: ${text}`);
+    } finally {
+      setIsSending(false);
     }
-
-    setMessage("メールを送信しました");
   }
 
   return (
-    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: "16px", background: "#f5f9ff" }}>
-      <div style={{ maxWidth: "420px", width: "100%", border: "1px solid #dbeafe", borderRadius: "18px", padding: "20px", background: "#fff", boxShadow: "0 4px 16px rgba(15,23,42,0.05)" }}>
-        <div style={{ width: "52px", height: "52px", borderRadius: "14px", background: "#e0f2fe", display: "grid", placeItems: "center", fontSize: "26px", marginBottom: "10px" }}>📝</div>
-        <h1 style={{ fontSize: "26px", fontWeight: 800, margin: "0 0 2px", color: "#0f172a", lineHeight: 1.25 }}>じいじの腎臓ノート</h1>
-        <div style={{ fontSize: "17px", fontWeight: 700, color: "#0369a1", marginBottom: "8px" }}>ログイン</div>
-        <p style={{ color: "#475569", margin: "0 0 16px", fontSize: "15px", lineHeight: 1.6 }}>
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        padding: "16px",
+        background: "#f5f9ff",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: "420px",
+          width: "100%",
+          border: "1px solid #dbeafe",
+          borderRadius: "18px",
+          padding: "20px",
+          background: "#fff",
+          boxShadow: "0 4px 16px rgba(15,23,42,0.05)",
+        }}
+      >
+        <div
+          style={{
+            width: "52px",
+            height: "52px",
+            borderRadius: "14px",
+            background: "#e0f2fe",
+            display: "grid",
+            placeItems: "center",
+            fontSize: "26px",
+            marginBottom: "10px",
+          }}
+        >
+          📝
+        </div>
+
+        <h1
+          style={{
+            fontSize: "26px",
+            fontWeight: 800,
+            margin: "0 0 2px",
+            color: "#0f172a",
+            lineHeight: 1.25,
+          }}
+        >
+          じいじの腎臓ノート
+        </h1>
+
+        <div
+          style={{
+            fontSize: "17px",
+            fontWeight: 700,
+            color: "#0369a1",
+            marginBottom: "8px",
+          }}
+        >
+          ログイン
+        </div>
+
+        <p
+          style={{
+            color: "#475569",
+            margin: "0 0 16px",
+            fontSize: "15px",
+            lineHeight: 1.6,
+          }}
+        >
           家族用メールアドレスを入力して、ログインメールを受け取ってください。
         </p>
 
@@ -65,8 +132,10 @@ export default function LoginPage() {
               border: "1px solid #bfdbfe",
               fontSize: "16px",
               color: "#0f172a",
+              boxSizing: "border-box",
             }}
           />
+
           <button
             type="submit"
             disabled={isSending}
@@ -87,17 +156,45 @@ export default function LoginPage() {
         </form>
 
         {message ? (
-          <p style={{ marginTop: "12px", color: "#166534", background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: "12px", padding: "10px 12px", fontSize: "14px" }}>
+          <p
+            style={{
+              marginTop: "12px",
+              color: "#166534",
+              background: "#dcfce7",
+              border: "1px solid #bbf7d0",
+              borderRadius: "12px",
+              padding: "10px 12px",
+              fontSize: "14px",
+            }}
+          >
             {message}
           </p>
         ) : null}
+
         {errorMessage ? (
-          <p style={{ marginTop: "12px", color: "#991b1b", background: "#fee2e2", border: "1px solid #fecaca", borderRadius: "12px", padding: "10px 12px", fontSize: "14px" }}>
+          <p
+            style={{
+              marginTop: "12px",
+              color: "#991b1b",
+              background: "#fee2e2",
+              border: "1px solid #fecaca",
+              borderRadius: "12px",
+              padding: "10px 12px",
+              fontSize: "14px",
+            }}
+          >
             {errorMessage}
           </p>
         ) : null}
 
-        <p style={{ marginTop: "12px", color: "#64748b", fontSize: "12px", lineHeight: 1.55 }}>
+        <p
+          style={{
+            marginTop: "12px",
+            color: "#64748b",
+            fontSize: "12px",
+            lineHeight: 1.55,
+          }}
+        >
           最新のメールを開いてログインしてください。古いメールでは入れないことがあります。
         </p>
       </div>
