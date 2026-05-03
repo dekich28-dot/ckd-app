@@ -167,7 +167,7 @@
           width: 100%;
           max-width: 430px;
           min-height: 100vh;
-          padding: 18px 14px 98px;
+          padding: 18px 14px 128px;
           background: #f4faff;
         }
 
@@ -460,7 +460,8 @@
         .bottomTab {
           position: fixed;
           left: 50%;
-          bottom: 10px;
+          bottom: 12px;
+          z-index: 9999;
           transform: translateX(-50%);
           width: min(398px, calc(100% - 24px));
           display: grid;
@@ -468,8 +469,8 @@
           gap: 4px;
           padding: 10px;
           border-radius: 28px;
-          background: rgba(255, 255, 255, 0.96);
-          box-shadow: 0 14px 30px rgba(79, 149, 205, 0.22);
+          background: rgba(255, 255, 255, 0.98);
+          box-shadow: 0 14px 30px rgba(79, 149, 205, 0.24);
           backdrop-filter: blur(12px);
         }
 
